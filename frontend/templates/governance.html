@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Governance - Bias Fairness Platform</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Algorithmic Bias & Fairness Observability Platform</h1>
+            <p>Enterprise-grade fairness monitoring for AI systems</p>
+        </div>
+    </header>
+
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/fairness">Fairness Metrics</a></li>
+                <li><a href="/temporal">Temporal Monitoring</a></li>
+                <li><a href="/governance" class="active">Governance</a></li>
+                <li><a href="/alerts">Alerts</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="dashboard-header">
+            <h2>Governance & Compliance Dashboard</h2>
+            <p>Model registry, audit logs, and compliance tracking with immutable records</p>
+        </div>
+
+        <div id="governanceData"></div>
+
+        <div class="chart-container">
+            <h3>Compliance Status Distribution</h3>
+            <div id="complianceChart" class="chart-wrapper"></div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Audit Log Activity</h3>
+            <div id="auditActivityChart" class="chart-wrapper"></div>
+        </div>
+
+        <div class="table-container">
+            <h3>Audit Log (Immutable Records)</h3>
+            <div id="auditLogTable"></div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Salesforce AI Model Registry</h3>
+            <div id="salesforceRegistry"></div>
+        </div>
+
+        <div class="table-container">
+            <h3>Compliance Violations Summary</h3>
+            <div id="violationsSummary"></div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Algorithmic Bias & Fairness Observability Platform | Integrated with Salesforce AI Model Registry & Tableau Cloud</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/dashboard.js"></script>
+    <script>
+        const createComplianceChart = async () => {
+            showLoading('complianceChart');
+            
+            try {
+                const result = await apiCall('/api/governance/compliance');
+                
+                if (result.status === 'success') {
+                    const report = result.compliance_report;
+                    
+                    const data = [{
+                        values: [report.compliant_models, report.non_compliant_models],
+                        labels: ['Compliant', 'Non-Compliant'],
+                        type: 'pie',
+                        marker: {
+                            colors: ['#2ecc71', '#e74c3c']
+                        },
+                        textinfo: 'label+percent+value',
+                        textposition: 'outside'
+                    }];
+                    
+                    const layout = {
+                        title: 'Model Compliance Distribution',
+                        height: 400
+                    };
+                    
+                    Plotly.newPlot('complianceChart', data, layout);
+                }
+            } catch (error) {
+                showError('complianceChart', error.message);
+            }
+        };
+        
+        const createAuditActivityChart = async () => {
+            showLoading('auditActivityChart');
+            
+            try {
+                const result = await apiCall('/api/governance/audit-log');
+                
+                if (result.status === 'success') {
+                    const auditLog = result.audit_log;
+                    
+                    const eventTypes = {};
+                    auditLog.forEach(entry => {
+                        eventTypes[entry.event_type] = (eventTypes[entry.event_type] || 0) + 1;
+                    });
+                    
+                    const trace = {
+                        x: Object.keys(eventTypes),
+                        y: Object.values(eventTypes),
+                        type: 'bar',
+                        marker: {
+                            color: '#3498db'
+                        }
+                    };
+                    
+                    const layout = {
+                        title: 'Audit Events by Type',
+                        xaxis: { title: 'Event Type' },
+                        yaxis: { title: 'Count' },
+                        height: 400
+                    };
+                    
+                    Plotly.newPlot('auditActivityChart', [trace], layout);
+                }
+            } catch (error) {
+                showError('auditActivityChart', error.message);
+            }
+        };
+        
+        const displayAuditLog = async () => {
+            showLoading('auditLogTable');
+            
+            try {
+                const result = await apiCall('/api/governance/audit-log');
+                
+                if (result.status === 'success') {
+                    const auditLog = result.audit_log;
+                    const container = document.getElementById('auditLogTable');
+                    
+                    if (auditLog.length === 0) {
+                        container.innerHTML = '<div class="info-message">No audit entries found.</div>';
+                        return;
+                    }
+                    
+                    let html = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Audit ID</th>
+                                    <th>Timestamp</th>
+                                    <th>Event Type</th>
+                                    <th>Entity ID</th>
+                                    <th>Checksum</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    auditLog.slice(0, 50).forEach(entry => {
+                        html += `
+                            <tr>
+                                <td>${entry.audit_id}</td>
+                                <td>${new Date(entry.timestamp).toLocaleString()}</td>
+                                <td><span class="badge badge-info">${entry.event_type}</span></td>
+                                <td>${entry.entity_id}</td>
+                                <td><code>${entry.checksum.substring(0, 16)}...</code></td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
+                            </tbody>
+                        </table>
+                    `;
+                    
+                    if (auditLog.length > 50) {
+                        html += `<p class="info-message">Showing 50 of ${auditLog.length} total entries</p>`;
+                    }
+                    
+                    container.innerHTML = html;
+                }
+            } catch (error) {
+                showError('auditLogTable', error.message);
+            }
+        };
+        
+        const displayViolationsSummary = async () => {
+            showLoading('violationsSummary');
+            
+            try {
+                const result = await apiCall('/api/governance/compliance');
+                
+                if (result.status === 'success') {
+                    const report = result.compliance_report;
+                    const container = document.getElementById('violationsSummary');
+                    
+                    if (Object.keys(report.violation_summary).length === 0) {
+                        container.innerHTML = '<div class="success-message">No compliance violations detected across all models.</div>';
+                        return;
+                    }
+                    
+                    let html = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Violation Type</th>
+                                    <th>Count</th>
+                                    <th>Description</th>
+                                    <th>Recommended Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    const descriptions = {
+                        'DEMOGRAPHIC_PARITY_VIOLATION': 'Difference in positive prediction rates exceeds 0.1',
+                        'EQUAL_OPPORTUNITY_VIOLATION': 'Difference in true positive rates exceeds 0.1',
+                        'EQUALIZED_ODDS_VIOLATION': 'Combined TPR and FPR difference exceeds 0.1',
+                        'DISPARATE_IMPACT_VIOLATION': 'Positive rate ratio outside acceptable range (0.8-1.25)'
+                    };
+                    
+                    const actions = {
+                        'DEMOGRAPHIC_PARITY_VIOLATION': 'Reweight training data or apply fairness constraints',
+                        'EQUAL_OPPORTUNITY_VIOLATION': 'Adjust decision thresholds per group',
+                        'EQUALIZED_ODDS_VIOLATION': 'Apply post-processing fairness corrections',
+                        'DISPARATE_IMPACT_VIOLATION': 'Review feature selection and remove biased features'
+                    };
+                    
+                    for (const [violation, count] of Object.entries(report.violation_summary)) {
+                        html += `
+                            <tr>
+                                <td><span class="badge badge-danger">${violation.replace(/_/g, ' ')}</span></td>
+                                <td>${count}</td>
+                                <td>${descriptions[violation] || 'N/A'}</td>
+                                <td>${actions[violation] || 'N/A'}</td>
+                            </tr>
+                        `;
+                    }
+                    
+                    html += `
+                            </tbody>
+                        </table>
+                    `;
+                    
+                    container.innerHTML = html;
+                }
+            } catch (error) {
+                showError('violationsSummary', error.message);
+            }
+        };
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadGovernanceData();
+            await createComplianceChart();
+            await createAuditActivityChart();
+            await displayAuditLog();
+            await loadSalesforceRegistry();
+            await displayViolationsSummary();
+        });
+    </script>
+</body>
+</html>

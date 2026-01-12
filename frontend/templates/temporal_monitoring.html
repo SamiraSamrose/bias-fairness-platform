@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temporal Monitoring - Bias Fairness Platform</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Algorithmic Bias & Fairness Observability Platform</h1>
+            <p>Enterprise-grade fairness monitoring for AI systems</p>
+        </div>
+    </header>
+
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/fairness">Fairness Metrics</a></li>
+                <li><a href="/temporal" class="active">Temporal Monitoring</a></li>
+                <li><a href="/governance">Governance</a></li>
+                <li><a href="/alerts">Alerts</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="dashboard-header">
+            <h2>Temporal Drift Monitoring</h2>
+            <p>Track fairness metrics over time to detect model degradation and bias drift</p>
+        </div>
+
+        <div class="info-message">
+            <strong>Note:</strong> Temporal monitoring visualizes how fairness metrics evolve over time in production. This simulation demonstrates drift detection capabilities.
+        </div>
+
+        <div class="chart-container">
+            <h3>Fairness Drift Over Time - All Datasets</h3>
+            <p>Monitor changes in fairness metrics to detect gradual or sudden shifts in model behavior</p>
+            <div id="temporalOverviewChart" class="chart-wrapper"></div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Performance Degradation Monitoring</h3>
+            <p>Track model accuracy and performance metrics to identify when retraining is needed</p>
+            <div id="performanceDriftChart" class="chart-wrapper"></div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Bias Delta Score Trend</h3>
+            <p>Aggregate bias measure trending over time</p>
+            <div id="biasDeltaTrendChart" class="chart-wrapper"></div>
+        </div>
+
+        <div class="table-container">
+            <h3>Drift Detection Summary</h3>
+            <div id="driftSummaryTable"></div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Algorithmic Bias & Fairness Observability Platform | Integrated with Salesforce AI Model Registry & Tableau Cloud</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/dashboard.js"></script>
+    <script>
+        const simulateTemporalData = () => {
+            const datasets = ['compas', 'loan', 'census'];
+            const models = ['Logistic Regression', 'Random Forest', 'Gradient Boosting'];
+            const periods = 12;
+            const data = [];
+            
+            const baseDate = new Date();
+            baseDate.setMonth(baseDate.getMonth() - 12);
+            
+            datasets.forEach(dataset => {
+                models.forEach(model => {
+                    const baseBias = Math.random() * 0.15;
+                    const baseAccuracy = 0.75 + Math.random() * 0.15;
+                    
+                    for (let i = 0; i < periods; i++) {
+                        const date = new Date(baseDate);
+                        date.setMonth(date.getMonth() + i);
+                        
+                        const drift = (i * 0.01) + (Math.random() * 0.02 - 0.01);
+                        const accuracyDrift = -(i * 0.005) + (Math.random() * 0.01 - 0.005);
+                        
+                        data.push({
+                            dataset: dataset,
+                            model: model,
+                            date: date.toISOString().split('T')[0],
+                            demographic_parity_diff: baseBias + drift,
+                            accuracy: baseAccuracy + accuracyDrift,
+                            period: i + 1
+                        });
+                    }
+                });
+            });
+            
+            return data;
+        };
+        
+        const createTemporalOverviewChart = (data) => {
+            const datasets = [...new Set(data.map(d => d.dataset))];
+            const traces = [];
+            
+            datasets.forEach(dataset => {
+                const datasetData = data.filter(d => d.dataset === dataset && d.model === 'Random Forest');
+                
+                traces.push({
+                    x: datasetData.map(d => d.date),
+                    y: datasetData.map(d => d.demographic_parity_diff),
+                    mode: 'lines+markers',
+                    name: dataset.toUpperCase(),
+                    line: { width: 3 }
+                });
+            });
+            
+            const layout = {
+                title: 'Demographic Parity Drift Over Time (Random Forest Model)',
+                xaxis: { title: 'Date' },
+                yaxis: { title: 'Demographic Parity Difference' },
+                height: 500,
+                shapes: [
+                    { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 0.1, y1: 0.1, line: { color: 'red', dash: 'dash', width: 2 } },
+                    { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: -0.1, y1: -0.1, line: { color: 'red', dash: 'dash', width: 2 } }
+                ],
+                annotations: [
+                    {
+                        x: 0.5,
+                        y: 0.1,
+                        xref: 'paper',
+                        yref: 'y',
+                        text: 'Threshold: 0.1',
+                        showarrow: false,
+                        yshift: 10
+                    }
+                ]
+            };
+            
+            Plotly.newPlot('temporalOverviewChart', traces, layout);
+        };
+        
+        const createPerformanceDriftChart = (data) => {
+            const datasets = [...new Set(data.map(d => d.dataset))];
+            const traces = [];
+            
+            datasets.forEach(dataset => {
+                const datasetData = data.filter(d => d.dataset === dataset && d.model === 'Random Forest');
+                
+                traces.push({
+                    x: datasetData.map(d => d.date),
+                    y: datasetData.map(d => d.accuracy),
+                    mode: 'lines+markers',
+                    name: dataset.toUpperCase(),
+                    line: { width: 3 }
+                });
+            });
+            
+            const layout = {
+                title: 'Model Accuracy Trend Over Time (Random Forest Model)',
+                xaxis: { title: 'Date' },
+                yaxis: { title: 'Accuracy', range: [0.5, 1] },
+                height: 500,
+                shapes: [
+                    { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 0.75, y1: 0.75, line: { color: 'orange', dash: 'dash', width: 2 } }
+                ],
+                annotations: [
+                    {
+                        x: 0.5,
+                        y: 0.75,
+                        xref: 'paper',
+                        yref: 'y',
+                        text: 'Minimum Threshold: 0.75',
+                        showarrow: false,
+                        yshift: 10
+                    }
+                ]
+            };
+            
+            Plotly.newPlot('performanceDriftChart', traces, layout);
+        };
+        
+        const createBiasDeltaTrendChart = (data) => {
+            const datasets = [...new Set(data.map(d => d.dataset))];
+            const traces = [];
+            
+            datasets.forEach(dataset => {
+                const datasetData = data.filter(d => d.dataset === dataset && d.model === 'Random Forest');
+                
+                const biasDeltas = datasetData.map(d => {
+                    const dpd = Math.abs(d.demographic_parity_diff);
+                    return dpd * 0.5;
+                });
+                
+                traces.push({
+                    x: datasetData.map(d => d.date),
+                    y: biasDeltas,
+                    mode: 'lines+markers',
+                    name: dataset.toUpperCase(),
+                    line: { width: 3 },
+                    fill: 'tozeroy',
+                    fillcolor: `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 0.2)`
+                });
+            });
+            
+            const layout = {
+                title: 'Bias Delta Score Trend (Random Forest Model)',
+                xaxis: { title: 'Date' },
+                yaxis: { title: 'Bias Delta Score' },
+                height: 500,
+                shapes: [
+                    { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 0.15, y1: 0.15, line: { color: 'red', dash: 'dash', width: 2 } }
+                ],
+                annotations: [
+                    {
+                        x: 0.5,
+                        y: 0.15,
+                        xref: 'paper',
+                        yref: 'y',
+                        text: 'Alert Threshold: 0.15',
+                        showarrow: false,
+                        yshift: 10
+                    }
+                ]
+            };
+            
+            Plotly.newPlot('biasDeltaTrendChart', traces, layout);
+        };
+        
+        const createDriftSummaryTable = (data) => {
+            const container = document.getElementById('driftSummaryTable');
+            if (!container) return;
+            
+            const datasets = [...new Set(data.map(d => d.dataset))];
+            const models = [...new Set(data.map(d => d.model))];
+            
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Dataset</th>
+                            <th>Model</th>
+                            <th>Initial Bias</th>
+                            <th>Current Bias</th>
+                            <th>Drift</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            datasets.forEach(dataset => {
+                models.forEach(model => {
+                    const modelData = data.filter(d => d.dataset === dataset && d.model === model);
+                    
+                    if (modelData.length > 0) {
+                        const initialBias = Math.abs(modelData[0].demographic_parity_diff);
+                        const currentBias = Math.abs(modelData[modelData.length - 1].demographic_parity_diff);
+                        const drift = currentBias - initialBias;
+                        
+                        const statusClass = Math.abs(drift) > 0.05 ? 'badge-warning' : 'badge-success';
+                        const statusText = Math.abs(drift) > 0.05 ? 'Drift Detected' : 'Stable';
+                        
+                        html += `
+                            <tr>
+                                <td>${dataset.toUpperCase()}</td>
+                                <td>${model}</td>
+                                <td>${initialBias.toFixed(4)}</td>
+                                <td>${currentBias.toFixed(4)}</td>
+                                <td>${drift > 0 ? '+' : ''}${drift.toFixed(4)}</td>
+                                <td><span class="badge ${statusClass}">${statusText}</span></td>
+                            </tr>
+                        `;
+                    }
+                });
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = html;
+        };
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const temporalData = simulateTemporalData();
+            createTemporalOverviewChart(temporalData);
+            createPerformanceDriftChart(temporalData);
+            createBiasDeltaTrendChart(temporalData);
+            createDriftSummaryTable(temporalData);
+        });
+    </script>
+</body>
+</html>

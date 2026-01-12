@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bias Fairness Platform - Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Algorithmic Bias & Fairness Observability Platform</h1>
+            <p>Enterprise-grade fairness monitoring for AI systems</p>
+        </div>
+    </header>
+
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="/" class="active">Dashboard</a></li>
+                <li><a href="/fairness">Fairness Metrics</a></li>
+                <li><a href="/temporal">Temporal Monitoring</a></li>
+                <li><a href="/governance">Governance</a></li>
+                <li><a href="/alerts">Alerts</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="dashboard-header">
+            <h2>Main Dashboard</h2>
+            <p>Overview of system status, model performance, and fairness metrics</p>
+        </div>
+
+        <div class="control-panel">
+            <h3>System Controls</h3>
+            <div class="button-group">
+                <button id="loadDatasetsBtn" class="btn-primary" onclick="loadDatasets()">
+                    Load Datasets
+                </button>
+                <button id="trainModelsBtn" class="btn-success" onclick="trainModels()">
+                    Train Models
+                </button>
+                <button class="btn-warning" onclick="loadAllVisualizations()">
+                    Refresh Visualizations
+                </button>
+            </div>
+        </div>
+
+        <div id="datasetsStatus"></div>
+        <div id="trainingStatus"></div>
+
+        <div class="stats-grid" id="overallStats">
+            <div class="stat-card">
+                <h4>Datasets Analyzed</h4>
+                <div class="value">3</div>
+                <div class="label">COMPAS, Loan, Census</div>
+            </div>
+            <div class="stat-card">
+                <h4>Models Trained</h4>
+                <div class="value" id="modelCount">0</div>
+                <div class="label">Total Models</div>
+            </div>
+            <div class="stat-card">
+                <h4>Fairness Metrics</h4>
+                <div class="value">5</div>
+                <div class="label">Per Model</div>
+            </div>
+            <div class="stat-card success">
+                <h4>Active Monitoring</h4>
+                <div class="value">Real-time</div>
+                <div class="label">Status: Active</div>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="chart-container">
+                <h3>Model Performance Comparison</h3>
+                <div id="performanceMetricsChart" class="chart-wrapper"></div>
+            </div>
+
+            <div class="chart-container">
+                <h3>Fairness Metrics Overview</h3>
+                <div id="fairnessComparisonChart" class="chart-wrapper"></div>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="chart-container">
+                <h3>Bias Delta Score</h3>
+                <div id="biasDeltaChart" class="chart-wrapper"></div>
+            </div>
+
+            <div class="chart-container">
+                <h3>Fairness Stability Index</h3>
+                <div id="stabilityIndexChart" class="chart-wrapper"></div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Performance vs Fairness Trade-off Analysis</h3>
+            <div id="tradeoffChart" class="chart-wrapper"></div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Recent Alerts</h3>
+            <div id="recentAlerts"></div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Algorithmic Bias & Fairness Observability Platform | Integrated with Salesforce AI Model Registry & Tableau Cloud</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/dashboard.js"></script>
+    <script>
+        // Page-specific initialization
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const registryResult = await apiCall('/api/governance/registry');
+                if (registryResult.status === 'success') {
+                    document.getElementById('modelCount').textContent = Object.keys(registryResult.registry).length;
+                }
+                
+                const alertsResult = await apiCall('/api/alerts');
+                if (alertsResult.status === 'success' && alertsResult.alerts.length > 0) {
+                    const recentAlerts = alertsResult.alerts.slice(0, 3);
+                    displayAlerts(recentAlerts);
+                    document.getElementById('recentAlerts').innerHTML = document.getElementById('alertsList') ? 
+                        document.getElementById('alertsList').innerHTML : 
+                        '<div class="info-message">No recent alerts</div>';
+                }
+            } catch (error) {
+                console.error('Initialization error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

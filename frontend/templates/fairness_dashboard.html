@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fairness Metrics - Bias Fairness Platform</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Algorithmic Bias & Fairness Observability Platform</h1>
+            <p>Enterprise-grade fairness monitoring for AI systems</p>
+        </div>
+    </header>
+
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/fairness" class="active">Fairness Metrics</a></li>
+                <li><a href="/temporal">Temporal Monitoring</a></li>
+                <li><a href="/governance">Governance</a></li>
+                <li><a href="/alerts">Alerts</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="dashboard-header">
+            <h2>Fairness Metrics Dashboard</h2>
+            <p>Comprehensive fairness analysis across all models and datasets</p>
+        </div>
+
+        <div class="stats-grid" id="fairnessStats"></div>
+
+        <div class="chart-container">
+            <h3>Demographic Parity Difference</h3>
+            <p>Measures the difference in positive prediction rates between protected and unprotected groups. Threshold: 0.1</p>
+            <div id="dpdChart" class="chart-wrapper"></div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Equal Opportunity Difference</h3>
+            <p>Measures the difference in true positive rates between groups. Threshold: 0.1</p>
+            <div id="eodChart" class="chart-wrapper"></div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Equalized Odds Difference</h3>
+            <p>Combined measure of TPR and FPR differences. Threshold: 0.1</p>
+            <div id="eoddChart" class="chart-wrapper"></div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Disparate Impact Ratio</h3>
+            <p>Ratio of positive prediction rates. Acceptable range: 0.8 - 1.25</p>
+            <div id="dirChart" class="chart-wrapper"></div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Semantic Metrics: Bias Delta Score</h3>
+            <p>Aggregate bias measure across all fairness metrics (0 = no bias, 1 = maximum bias)</p>
+            <div id="biasDeltaDetailChart" class="chart-wrapper"></div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Semantic Metrics: Fairness Stability Index</h3>
+            <p>Consistency of fairness across models (0 = unstable, 1 = perfectly stable)</p>
+            <div id="stabilityDetailChart" class="chart-wrapper"></div>
+        </div>
+
+        <div class="table-container">
+            <h3>Detailed Fairness Metrics Table</h3>
+            <div id="fairnessTable"></div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Algorithmic Bias & Fairness Observability Platform | Integrated with Salesforce AI Model Registry & Tableau Cloud</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/dashboard.js"></script>
+    <script>
+        const createDetailedFairnessCharts = async () => {
+            showLoading('dpdChart');
+            showLoading('eodChart');
+            showLoading('eoddChart');
+            showLoading('dirChart');
+            
+            try {
+                const result = await apiCall('/api/visualizations/fairness-comparison');
+                
+                if (result.status === 'success' && result.data.length > 0) {
+                    const data = result.data;
+                    const datasets = [...new Set(data.map(d => d.dataset))];
+                    
+                    // Demographic Parity Difference
+                    const dpdTraces = datasets.map(dataset => ({
+                        x: data.filter(d => d.dataset === dataset).map(d => d.model),
+                        y: data.filter(d => d.dataset === dataset).map(d => d.demographic_parity_diff),
+                        name: dataset,
+                        type: 'bar'
+                    }));
+                    
+                    Plotly.newPlot('dpdChart', dpdTraces, {
+                        title: 'Demographic Parity Difference by Dataset and Model',
+                        xaxis: { title: 'Model' },
+                        yaxis: { title: 'DPD Value' },
+                        barmode: 'group',
+                        height: 400,
+                        shapes: [
+                            { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 0.1, y1: 0.1, line: { color: 'red', dash: 'dash' } },
+                            { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: -0.1, y1: -0.1, line: { color: 'red', dash: 'dash' } }
+                        ]
+                    });
+                    
+                    // Equal Opportunity Difference
+                    const eodTraces = datasets.map(dataset => ({
+                        x: data.filter(d => d.dataset === dataset).map(d => d.model),
+                        y: data.filter(d => d.dataset === dataset).map(d => d.equal_opportunity_diff),
+                        name: dataset,
+                        type: 'bar'
+                    }));
+                    
+                    Plotly.newPlot('eodChart', eodTraces, {
+                        title: 'Equal Opportunity Difference by Dataset and Model',
+                        xaxis: { title: 'Model' },
+                        yaxis: { title: 'EOD Value' },
+                        barmode: 'group',
+                        height: 400,
+                        shapes: [
+                            { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 0.1, y1: 0.1, line: { color: 'red', dash: 'dash' } },
+                            { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: -0.1, y1: -0.1, line: { color: 'red', dash: 'dash' } }
+                        ]
+                    });
+                    
+                    // Equalized Odds Difference
+                    const eoddTraces = datasets.map(dataset => ({
+                        x: data.filter(d => d.dataset === dataset).map(d => d.model),
+                        y: data.filter(d => d.dataset === dataset).map(d => d.equalized_odds_diff),
+                        name: dataset,
+                        type: 'bar'
+                    }));
+                    
+                    Plotly.newPlot('eoddChart', eoddTraces, {
+                        title: 'Equalized Odds Difference by Dataset and Model',
+                        xaxis: { title: 'Model' },
+                        yaxis: { title: 'EODD Value' },
+                        barmode: 'group',
+                        height: 400,
+                        shapes: [
+                            { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 0.1, y1: 0.1, line: { color: 'red', dash: 'dash' } }
+                        ]
+                    });
+                    
+                    // Disparate Impact Ratio
+                    const dirTraces = datasets.map(dataset => ({
+                        x: data.filter(d => d.dataset === dataset).map(d => d.model),
+                        y: data.filter(d => d.dataset === dataset).map(d => d.disparate_impact_ratio),
+                        name: dataset,
+                        type: 'bar'
+                    }));
+                    
+                    Plotly.newPlot('dirChart', dirTraces, {
+                        title: 'Disparate Impact Ratio by Dataset and Model',
+                        xaxis: { title: 'Model' },
+                        yaxis: { title: 'DIR Value' },
+                        barmode: 'group',
+                        height: 400,
+                        shapes: [
+                            { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 0.8, y1: 0.8, line: { color: 'orange', dash: 'dash' } },
+                            { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 1.0, y1: 1.0, line: { color: 'green', dash: 'dash' } },
+                            { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 1.25, y1: 1.25, line: { color: 'orange', dash: 'dash' } }
+                        ]
+                    });
+                    
+                    // Create fairness table
+                    createFairnessTable(data);
+                }
+            } catch (error) {
+                showError('dpdChart', error.message);
+            }
+        };
+        
+        const createFairnessTable = (data) => {
+            const container = document.getElementById('fairnessTable');
+            if (!container) return;
+            
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Dataset</th>
+                            <th>Model</th>
+                            <th>DPD</th>
+                            <th>EOD</th>
+                            <th>EODD</th>
+                            <th>DIR</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            data.forEach(row => {
+                const violations = [];
+                if (Math.abs(row.demographic_parity_diff) > 0.1) violations.push('DPD');
+                if (Math.abs(row.equal_opportunity_diff) > 0.1) violations.push('EOD');
+                if (Math.abs(row.equalized_odds_diff) > 0.1) violations.push('EODD');
+                if (row.disparate_impact_ratio < 0.8 || row.disparate_impact_ratio > 1.25) violations.push('DIR');
+                
+                const isCompliant = violations.length === 0;
+                const badgeClass = isCompliant ? 'badge-success' : 'badge-danger';
+                const badgeText = isCompliant ? 'Compliant' : `Violations: ${violations.join(', ')}`;
+                
+                html += `
+                    <tr>
+                        <td>${row.dataset}</td>
+                        <td>${row.model}</td>
+                        <td>${row.demographic_parity_diff.toFixed(4)}</td>
+                        <td>${row.equal_opportunity_diff.toFixed(4)}</td>
+                        <td>${row.equalized_odds_diff.toFixed(4)}</td>
+                        <td>${row.disparate_impact_ratio.toFixed(4)}</td>
+                        <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = html;
+        };
+        
+        const loadFairnessStats = async () => {
+            try {
+                const result = await apiCall('/api/fairness/metrics');
+                
+                if (result.status === 'success') {
+                    const metrics = result.fairness_metrics;
+                    let totalModels = 0;
+                    let compliantModels = 0;
+                    
+                    for (const dataset in metrics) {
+                        for (const model in metrics[dataset]) {
+                            totalModels++;
+                            const m = metrics[dataset][model];
+                            const isCompliant = Math.abs(m.demographic_parity_diff) <= 0.1 &&
+                                              Math.abs(m.equal_opportunity_diff) <= 0.1 &&
+                                              Math.abs(m.equalized_odds_diff) <= 0.1 &&
+                                              m.disparate_impact_ratio >= 0.8 &&
+                                              m.disparate_impact_ratio <= 1.25;
+                            if (isCompliant) compliantModels++;
+                        }
+                    }
+                    
+                    const complianceRate = ((compliantModels / totalModels) * 100).toFixed(1);
+                    
+                    const container = document.getElementById('fairnessStats');
+                    container.innerHTML = `
+                        <div class="stat-card">
+                            <h4>Total Models</h4>
+                            <div class="value">${totalModels}</div>
+                            <div class="label">Evaluated</div>
+                        </div>
+                        <div class="stat-card success">
+                            <h4>Compliant Models</h4>
+                            <div class="value">${compliantModels}</div>
+                            <div class="label">Meeting Thresholds</div>
+                        </div>
+                        <div class="stat-card ${complianceRate >= 80 ? 'success' : 'warning'}">
+                            <h4>Compliance Rate</h4>
+                            <div class="value">${complianceRate}%</div>
+                            <div class="label">Overall</div>
+                        </div>
+                        <div class="stat-card">
+                            <h4>Fairness Metrics</h4>
+                            <div class="value">5</div>
+                            <div class="label">DPD, EOD, EODD, DIR, SPD</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading fairness stats:', error);
+            }
+        };
+        
+        const createSemanticMetricsCharts = async () => {
+            showLoading('biasDeltaDetailChart');
+            showLoading('stabilityDetailChart');
+            
+            try {
+                const semanticResult = await apiCall('/api/semantic/metrics');
+                
+                if (semanticResult.status === 'success') {
+                    const data = semanticResult.semantic_metrics;
+                    
+                    // Bias Delta Score details
+                    const datasets = Object.keys(data);
+                    const biasDeltaTrace = {
+                        x: datasets,
+                        y: datasets.map(d => data[d].bias_delta.mean_bias_delta),
+                        type: 'bar',
+                        marker: {
+                            color: datasets.map(d => data[d].bias_delta.mean_bias_delta),
+                            colorscale: 'RdYlGn',
+                            reversescale: true
+                        },
+                        text: datasets.map(d => data[d].bias_delta.mean_bias_delta.toFixed(4)),
+                        textposition: 'outside'
+                    };
+                    
+                    Plotly.newPlot('biasDeltaDetailChart', [biasDeltaTrace], {
+                        title: 'Bias Delta Score by Dataset',
+                        xaxis: { title: 'Dataset' },
+                        yaxis: { title: 'Mean Bias Delta Score' },
+                        height: 400
+                    });
+                    
+                    // Fairness Stability Index details
+                    const stabilityTrace = {
+                        x: datasets,
+                        y: datasets.map(d => data[d].stability.fairness_stability_index),
+                        type: 'bar',
+                        marker: {
+                            color: datasets.map(d => data[d].stability.fairness_stability_index),
+                            colorscale: 'RdYlGn'
+                        },
+                        text: datasets.map(d => `${data[d].stability.fairness_stability_index.toFixed(4)} (${data[d].stability.stability_category})`),
+                        textposition: 'outside'
+                    };
+                    
+                    Plotly.newPlot('stabilityDetailChart', [stabilityTrace], {
+                        title: 'Fairness Stability Index by Dataset',
+                        xaxis: { title: 'Dataset' },
+                        yaxis: { title: 'Fairness Stability Index', range: [0, 1] },
+                        height: 400,
+                        shapes: [
+                            { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 0.7, y1: 0.7, line: { color: 'green', dash: 'dash' } },
+                            { type: 'line', x0: 0, x1: 1, xref: 'paper', y0: 0.5, y1: 0.5, line: { color: 'orange', dash: 'dash' } }
+                        ]
+                    });
+                }
+            } catch (error) {
+                showError('biasDeltaDetailChart', error.message);
+            }
+        };
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadFairnessStats();
+            await createDetailedFairnessCharts();
+            await createSemanticMetricsCharts();
+        });
+    </script>
+</body>
+</html>

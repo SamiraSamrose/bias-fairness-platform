@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alerts - Bias Fairness Platform</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Algorithmic Bias & Fairness Observability Platform</h1>
+            <p>Enterprise-grade fairness monitoring for AI systems</p>
+        </div>
+    </header>
+
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/fairness">Fairness Metrics</a></li>
+                <li><a href="/temporal">Temporal Monitoring</a></li>
+                <li><a href="/governance">Governance</a></li>
+                <li><a href="/alerts" class="active">Alerts</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="dashboard-header">
+            <h2>Fairness Alerts Dashboard</h2>
+            <p>Real-time alerts for fairness violations with Slack integration</p>
+        </div>
+
+        <div class="stats-grid" id="alertStats"></div>
+
+        <div class="control-panel">
+            <h3>Alert Configuration</h3>
+            <p>Alerts are automatically sent to Slack when fairness thresholds are exceeded</p>
+            <div class="button-group">
+                <button class="btn-primary" onclick="loadAlerts()">
+                    Refresh Alerts
+                </button>
+                <button class="btn-warning" onclick="testSlackIntegration()">
+                    Test Slack Integration
+                </button>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Alert Distribution</h3>
+            <div id="alertDistributionChart" class="chart-wrapper"></div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Alert Timeline</h3>
+            <div id="alertTimelineChart" class="chart-wrapper"></div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Active Alerts</h3>
+            <div id="alertsList"></div>
+        </div>
+
+        <div class="table-container">
+            <h3>Alert Thresholds</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Threshold</th>
+                        <th>Severity</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Demographic Parity Difference</td>
+                        <td>0.1</td>
+                        <td><span class="badge badge-warning">HIGH</span></td>
+                        <td>Triggers when absolute difference exceeds threshold</td>
+                    </tr>
+                    <tr>
+                        <td>Equal Opportunity Difference</td>
+                        <td>0.1</td>
+                        <td><span class="badge badge-warning">HIGH</span></td>
+                        <td>Triggers when absolute difference exceeds threshold</td>
+                    </tr>
+                    <tr>
+                        <td>Equalized Odds Difference</td>
+                        <td>0.1</td>
+                        <td><span class="badge badge-warning">HIGH</span></td>
+                        <td>Triggers when combined difference exceeds threshold</td>
+                    </tr>
+                    <tr>
+                        <td>Disparate Impact Ratio</td>
+                        <td>0.8 - 1.25</td>
+                        <td><span class="badge badge-danger">CRITICAL</span></td>
+                        <td>Triggers when ratio falls outside acceptable range</td>
+                    </tr>
+                    <tr>
+                        <td>Bias Delta Score</td>
+                        <td>0.15</td>
+                        <td><span class="badge badge-warning">HIGH</span></td>
+                        <td>Aggregate bias measure threshold</td>
+                    </tr>
+                    <tr>
+                        <td>Accuracy Drop</td>
+                        <td>0.05</td>
+                        <td><span class="badge badge-info">MEDIUM</span></td>
+                        <td>Triggers when accuracy decreases by more than 5%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Algorithmic Bias & Fairness Observability Platform | Integrated with Salesforce AI Model Registry & Tableau Cloud</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/dashboard.js"></script>
+    <script>
+        const loadAlertStats = async () => {
+            try {
+                const result = await apiCall('/api/alerts');
+                
+                if (result.status === 'success') {
+                    const alerts = result.alerts;
+                    
+                    const severityCounts = {
+                        CRITICAL: 0,
+                        HIGH: 0,
+                        MEDIUM: 0,
+                        LOW: 0
+                    };
+                    
+                    alerts.forEach(alert => {
+                        severityCounts[alert.severity]++;
+                    });
+                    
+                    const container = document.getElementById('alertStats');
+                    container.innerHTML = `
+                        <div class="stat-card danger">
+                            <h4>Critical Alerts</h4>
+                            <div class="value">${severityCounts.CRITICAL}</div>
+                            <div class="label">Immediate Action Required</div>
+                        </div>
+                        <div class="stat-card warning">
+                            <h4>High Priority</h4>
+                            <div class="value">${severityCounts.HIGH}</div>
+                            <div class="label">Review Soon</div>
+                        </div>
+                        <div class="stat-card">
+                            <h4>Medium Priority</h4>
+                            <div class="value">${severityCounts.MEDIUM}</div>
+                            <div class="label">Monitor</div>
+                        </div>
+                        <div class="stat-card success">
+                            <h4>Total Alerts</h4>
+                            <div class="value">${alerts.length}</div>
+                            <div class="label">All Time</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading alert stats:', error);
+            }
+        };
+        
+        const createAlertDistributionChart = async () => {
+            showLoading('alertDistributionChart');
+            
+            try {
+                const result = await apiCall('/api/alerts');
+                
+                if (result.status === 'success' && result.alerts.length > 0) {
+                    const alerts = result.alerts;
+                    
+                    const alertTypes = {};
+                    alerts.forEach(alert => {
+                        alertTypes[alert.alert_type] = (alertTypes[alert.alert_type] || 0) + 1;
+                    });
+                    
+                    const data = [{
+                        values: Object.values(alertTypes),
+                        labels: Object.keys(alertTypes).map(t => t.replace(/_/g, ' ')),
+                        type: 'pie',
+                        marker: {
+                            colors: ['#e74c3c', '#f39c12', '#3498db', '#2ecc71']
+                        }
+                    }];
+                    
+                    const layout = {
+                        title: 'Alerts by Type',
+                        height: 400
+                    };
+                    
+                    Plotly.newPlot('alertDistributionChart', data, layout);
+                } else {
+                    document.getElementById('alertDistributionChart').innerHTML = 
+                        '<div class="info-message">No alerts to display</div>';
+                }
+            } catch (error) {
+                showError('alertDistributionChart', error.message);
+            }
+        };
+        
+        const createAlertTimelineChart = async () => {
+            showLoading('alertTimelineChart');
+            
+            try {
+                const result = await apiCall('/api/alerts');
+                
+                if (result.status === 'success' && result.alerts.length > 0) {
+                    const alerts = result.alerts;
+                    
+                    alerts.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                    
+                    const severities = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+                    const traces = severities.map(severity => {
+                        const severityAlerts = alerts.filter(a => a.severity === severity);
+                        
+                        return {
+                            x: severityAlerts.map(a => a.timestamp),
+                            y: severityAlerts.map((a, i) => i + 1),
+                            mode: 'markers',
+                            name: severity,
+                            marker: {
+                                size: 10,
+                                color: severity === 'CRITICAL' ? '#e74c3c' :
+                                      severity === 'HIGH' ? '#f39c12' :
+                                      severity === 'MEDIUM' ? '#3498db' : '#2ecc71'
+                            }
+                        };
+                    });
+                    
+                    const layout = {
+                        title: 'Alert Timeline',
+                        xaxis: { title: 'Timestamp' },
+                        yaxis: { title: 'Alert Count' },
+                        height: 400
+                    };
+                    
+                    Plotly.newPlot('alertTimelineChart', traces, layout);
+                } else {
+                    document.getElementById('alertTimelineChart').innerHTML = 
+                        '<div class="info-message">No alerts to display</div>';
+                }
+            } catch (error) {
+                showError('alertTimelineChart', error.message);
+            }
+        };
+        
+        const testSlackIntegration = async () => {
+            alert('Slack integration test: This would send a test message to the configured Slack webhook. Ensure SLACK_WEBHOOK_URL is configured in environment variables.');
+        };
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadAlertStats();
+            await loadAlerts();
+            await createAlertDistributionChart();
+            await createAlertTimelineChart();
+        });
+    </script>
+</body>
+</html>
