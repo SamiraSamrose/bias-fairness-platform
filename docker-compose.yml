@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
+      - ./data:/app/data
+      - ./exports:/app/exports
+    environment:
+      - FLASK_APP=backend/app.py
+      - FLASK_ENV=development
+      - SECRET_KEY=${SECRET_KEY}
+      - SALESFORCE_CLIENT_ID=${SALESFORCE_CLIENT_ID}
+      - SALESFORCE_CLIENT_SECRET=${SALESFORCE_CLIENT_SECRET}
+      - SALESFORCE_USERNAME=${SALESFORCE_USERNAME}
+      - SALESFORCE_PASSWORD=${SALESFORCE_PASSWORD}
+      - SALESFORCE_SECURITY_TOKEN=${SALESFORCE_SECURITY_TOKEN}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - TABLEAU_SERVER_URL=${TABLEAU_SERVER_URL}
+      - TABLEAU_USERNAME=${TABLEAU_USERNAME}
+      - TABLEAU_PASSWORD=${TABLEAU_PASSWORD}
+    command: python backend/app.py
